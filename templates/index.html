@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My OTT</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Extra styles for logged-in message */
+        .message-box {
+            max-width: 500px;
+            margin: 80px auto;
+            padding: 40px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 18px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+        .message-box h2 {
+            margin-bottom: 20px;
+            color: #4ade80;
+        }
+        .message-box p {
+            font-size: 18px;
+            margin-bottom: 30px;
+            color: #ddd;
+        }
+        .back-btn {
+            display: inline-block;
+            padding: 12px 28px;
+            background: white;
+            color: black;
+            text-decoration: none;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .back-btn:hover {
+            background: #ddd;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="sidebar collapsed" id="sidebar">
+
+        <div class="sidebar-header" onclick="toggleSidebar()">
+            <span class="logo"> TV</span>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search movies...">
+            <div id="suggestions"></div>
+        </div>
+
+        <ul>
+            <li class="active">
+                <a href="/home">
+                    <span class="icon"><i class="fa-solid fa-house"></i></span>
+                    <span class="text">Home</span>
+                </a>
+            </li>
+
+            <!-- Login Link - Smart Behavior -->
+            <li>
+                <a href="{% if user %}#{% else %}/login{% endif %}"
+                   onclick="{% if user %}showLoggedInMessage('login'){% endif %}">
+                    <span class="icon"><i class="fa-solid fa-lock"></i></span>
+                    <span class="text">Login</span>
+                </a>
+            </li>
+
+            <!-- Signup Link - Smart Behavior -->
+            <li>
+                <a href="{% if user %}#{% else %}/signup{% endif %}"
+                   onclick="{% if user %}showLoggedInMessage('signup'){% endif %}">
+                    <span class="icon"><i class="fa-solid fa-user-plus"></i></span>
+                    <span class="text">Signup</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="/admin">
+                    <span class="icon"><i class="fa-solid fa-gear"></i></span>
+                    <span class="text">Admin</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="#">
+                    <span class="icon"><i class="fa-solid fa-book"></i></span>
+                    <span class="text">Library</span>
+                </a>
+            </li>
+        </ul>
+
+    </div>
+
+    <div class="main">
+
+        <div class="user-box">
+            {% if user %}
+                Hi {{ user }} 👋 | <a href="/logout">Logout</a>
+            {% else %}
+                <a href="/login">Login</a>
+            {% endif %}
+        </div>
+
+        <!-- SLIDER with Pause on Hover -->
+        <div class="slider" id="slider">
+            {% for movie in movies %}
+            <div class="slide">
+                <img src="{{ url_for('static', filename=movie.image) }}" alt="{{ movie.title }}">
+
+                <div class="slide-content">
+                    <h1>{{ movie.title }}</h1>
+                    <p class="slide-description">{{ movie.description|default('No description available.') }}</p>
+                    <a href="/watch/{{ movie.video.split('/')[-1] }}" class="play">▶ Play</a>
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="arrow left" onclick="prevSlide()">❮</div>
+            <div class="arrow right" onclick="nextSlide()">❯</div>
+            <div class="dots" id="dots"></div>
+        </div>
+
+        <h2 class="section-title">Trending</h2>
+
+        <div class="cards">
+            {% for movie in movies %}
+            <div class="card">
+                <a href="/watch/{{ movie.video.split('/')[-1] }}">
+                    <img src="{{ url_for('static', filename=movie.image) }}" alt="{{ movie.title }}">
+
+                    <div class="overlay">
+                        <div class="play-btn">
+                            <i class="fa-solid fa-play"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Logged-in Message Container (Hidden by default) -->
+        <div id="loggedInMessage" class="message-box" style="display: none;">
+            <h2 id="messageTitle"></h2>
+            <p id="messageText"></p>
+            <a href="/home" class="back-btn">← Back to Home</a>
+        </div>
+
+    </div>
+</div>
+
+<script>
+function toggleSidebar() {
+    document.getElementById("sidebar").classList.toggle("collapsed");
+}
+
+// Show message when already logged in and click Login/Signup
+function showLoggedInMessage(type) {
+    const messageBox = document.getElementById("loggedInMessage");
+    const title = document.getElementById("messageTitle");
+    const text = document.getElementById("messageText");
+
+    if (type === 'login') {
+        title.textContent = "You are already logged in!";
+        text.textContent = "No need to login again.";
+    } else {
+        title.textContent = "You are already logged in!";
+        text.textContent = "You don't need to sign up again.";
+    }
+
+    // Hide main content and show message
+    document.querySelector(".slider").style.display = "none";
+    document.querySelector(".section-title").style.display = "none";
+    document.querySelector(".cards").style.display = "none";
+
+    messageBox.style.display = "block";
+}
+
+// Slider with Pause on Hover
+let current = 0;
+const slides = document.querySelectorAll(".slide");
+const dotsContainer = document.getElementById("dots");
+let slideInterval;
+
+if (slides.length > 0) {
+    slides.forEach((_, i) => {
+        const dot = document.createElement("span");
+        dot.classList.add("dot");
+        dot.onclick = () => {
+            current = i;
+            showSlide(current);
+        };
+        dotsContainer.appendChild(dot);
+    });
+
+    function showSlide(index) {
+        slides.forEach((slide, i) => {
+            slide.style.display = "none";
+            dotsContainer.children[i].classList.remove("active");
+        });
+        slides[index].style.display = "block";
+        dotsContainer.children[index].classList.add("active");
+    }
+
+    function nextSlide() {
+        current = (current + 1) % slides.length;
+        showSlide(current);
+    }
+
+    function prevSlide() {
+        current = (current - 1 + slides.length) % slides.length;
+        showSlide(current);
+    }
+
+    window.nextSlide = nextSlide;
+    window.prevSlide = prevSlide;
+
+    function startAutoSlide() {
+        slideInterval = setInterval(nextSlide, 4000);
+    }
+
+    function stopAutoSlide() {
+        clearInterval(slideInterval);
+    }
+
+    const sliderElement = document.getElementById("slider");
+    sliderElement.addEventListener("mouseenter", stopAutoSlide);
+    sliderElement.addEventListener("mouseleave", startAutoSlide);
+
+    showSlide(0);
+    startAutoSlide();
+}
+
+// Search functionality
+const moviesData = [
+    {% for movie in movies %}
+    {
+        title: "{{ movie.title|escape }}",
+        image: "{{ url_for('static', filename=movie.image) }}",
+        video: "{{ movie.video.split('/')[-1] }}"
+    },
+    {% endfor %}
+];
+
+const searchInput = document.getElementById("searchInput");
+const suggestions = document.getElementById("suggestions");
+
+searchInput.addEventListener("input", function () {
+    const value = this.value.toLowerCase().trim();
+    suggestions.innerHTML = "";
+
+    if (value === "") {
+        suggestions.style.display = "none";
+        return;
+    }
+
+    const filtered = moviesData.filter(movie =>
+        movie.title.toLowerCase().includes(value)
+    );
+
+    filtered.forEach(movie => {
+        const div = document.createElement("div");
+        div.classList.add("suggest-item");
+        div.innerHTML = `
+            <img src="${movie.image}" alt="${movie.title}">
+            <span>${movie.title}</span>
+        `;
+        div.onclick = () => {
+            window.location.href = "/watch/" + movie.video;
+        };
+        suggestions.appendChild(div);
+    });
+
+    suggestions.style.display = filtered.length ? "block" : "none";
+});
+
+document.addEventListener("click", function(e) {
+    if (!searchInput.contains(e.target) && !suggestions.contains(e.target)) {
+        suggestions.style.display = "none";
+    }
+});
+</script>
+
+</body>
+</html>
